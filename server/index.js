@@ -37,14 +37,27 @@ const redisPublisher = redisClient.duplicate();
 
 // Express route handlers
 app.get('/', (req, res) => {
-  res.send('hi')
+  res.send('Hello')
 });
 
 app.get('/values/all', async (req, res) => {
-  const values = await pgClient.query('SELECT * from values');
+  const values = await pgClient.query('SELECT * FROM values');
 
   res.send(values.rows);
 });
+
+app.get('/values/current', async (req, res) => {
+  redisClient.hgetall('values', (err, values) => {
+    res.send(values);
+  });
+});
+
+const findFib = number => {
+  if (number < 2) {
+    return 1;
+  }
+  return findFib(number - 1) + findFib(number - 2);
+}
 
 app.post('/values', async (req, res) => {
   const index = req.body.index;
@@ -52,14 +65,19 @@ app.post('/values', async (req, res) => {
   if (parseInt(index) > 40) {
     return res.status(422).send('Index too high');
   }
-
-  redisClient.hset('values', index, 'Nothing yet');
+  const valueCal = findFib(index);
+  redisClient.hset('values', index, valueCal);
   redisPublisher.publish('insert', index);
   pgClient.query('INSERT INTO values(number) VALUES($1)', [index]);
-  
+
   res.send({ working: true });
 });
 
+
 app.listen(5000, (err) => {
-  console.log("Listening with error ", err);
+  if (err) {
+    console.log('Occ!!! something went wrong! ', err);
+    process.exit(1);
+  }
+  console.log('Server is listening on port 5000');
 });

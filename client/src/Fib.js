@@ -1,77 +1,73 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from './constant';
 
-class Fib extends Component {
-  state = {
-    seenIndexes: [],
-    values: {},
-    index: ''
+function Fib() {
+  const [seenIndexes, setSeenIndexes] = useState([]);
+  const [values, setValues] = useState({});
+  const [index, setIndex] = useState('');
+  
+  const fetchValue = async () => {
+    const values = await axios.get(`${API_URL}/values/current`);
+    setValues(values.data);
   };
 
-  componentDidMount() {
-    this.fetchValues();
-    this.fetchIndexes();
+  const fetchIndexes = async () => {
+    const seens = await axios.get(`${API_URL}/values/all`);
+    setSeenIndexes(seens.data);
   }
 
-  async fetchValues() {
-    const values = await axios.get('/api/values/current');
-    this.setState({ values: values.data });
+  useEffect(() => {
+    fetchValue();
+    fetchIndexes();
+  }, []);
+
+  const renderSeenIndexes = () => {
+    if (!seenIndexes || !seenIndexes.length || !Array.isArray(seenIndexes)) {
+      return '';
+    }
+    return seenIndexes.map(({ number }) => number).join(', ');
   }
 
-  async fetchIndexes() {
-    const seenIndexes = await axios.get('/api/values/all');
-    this.setState({
-      seenIndexes: seenIndexes.data
-    });
-  }
-
-  handleSubmit = async (event) => {
-    event.preventDefault();
-
-    await axios.post('/api/values', {
-      index: this.state.index
-    });
-
-    this.setState({ index: '' });
-  }
-
-  renderSeenIndexes() {
-    return this.state.seenIndexes.map(({ number }) => number.join(', '));
-  }
-
-  renderValues() {
+  const renderValues = () => {
     const entries = [];
-
-    for (let key in this.state.values) {
-      entries.push(
-        <div key={key}>
-          For index {key} I calculated {this.state.values[key]}
-        </div>
-      );
+    if (!Array.isArray(seenIndexes)) {
+      return entries;
     }
 
+    for (let key in values) {
+      entries.push(
+        <div key={key}>For index {key} I calculated: {values[key]}</div>
+      )
+    }
     return entries;
   }
 
-  render() {
-    return (
-      <div>
-        <form onSubmit={this.handleSubmit}>
-          <label>Enter your index: </label>
-          <input 
-            value={this.state.index}
-            onChange={(event) => this.setState({ index: event.target.value })}
-          />
-          <button>Submit</button>
-        </form>
-
-        <h3>Indexes I have seen:</h3>
-        {this.renderSeenIndexes()}
-        <h3>Calulated Values:</h3>
-        {this.renderValues()}
-      </div>
-    );
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    await axios.post(`${API_URL}/values`, {
+      index
+    });
+    setIndex('');
+    fetchValue();
+    fetchIndexes();
   }
+
+  return (
+    <div>
+      <form onSubmit={handleSubmit}>
+        <label>Enter your index: </label>
+        <input value={index} onChange={e => setIndex(e.target.value)} />
+        <button>Submit</button>
+      </form>
+      <>
+        <h3>Indexes I have seen: </h3>
+        {renderSeenIndexes()}
+        <h3>Calculated Values: </h3>
+        {renderValues()}
+      </>
+    </div>
+  )
 }
 
-export default Fib;
+export default Fib; 
