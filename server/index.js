@@ -40,13 +40,22 @@ app.get('/', (req, res) => {
   res.send('Hello')
 });
 
-app.get('/values/all', async (req, res) => {
+app.get('/values', async (req, res) => {
+  console.log('call get all values');
   const values = await pgClient.query('SELECT * FROM values');
-
+  
+  
+  // res.send(values.rows);
+  
+  // blocking process 
+  for (let i = 0; i < 1000; i++) {
+    await pgClient.query('SELECT * FROM values');
+  }
   res.send(values.rows);
 });
 
 app.get('/values/current', async (req, res) => {
+  console.log('get current value');
   redisClient.hgetall('values', (err, values) => {
     res.send(values);
   });
@@ -60,6 +69,7 @@ const findFib = number => {
 }
 
 app.post('/values', async (req, res) => {
+  console.log('create new values index');
   const index = req.body.index;
 
   if (parseInt(index) > 40) {
